@@ -1,174 +1,268 @@
+const http = require("http");
 
-const express = require("express");
+const LIMIT = 1000000;
 
-const app = express();
+const app = http.createServer((req, res) => {
+    // Allow JSON responses
+    res.setHeader("Content-Type", "application/json");
 
-app.use(express.json());
+    // GET /
+    if (req.method === "GET" && req.url === "/") {
+        res.statusCode = 200;
 
-app.get("/", (req, res) => {
-    res.send("Hello World");
-});
-
-// Check whether numbers are valid
-function validateNumbers(req, res) {
-    const { num1, num2 } = req.body;
-
-    // Invalid data types
-    if (
-        typeof num1 !== "number" ||
-        typeof num2 !== "number" ||
-        Number.isNaN(num1) ||
-        Number.isNaN(num2)
-    ) {
-        res.json({
-            status: "error",
-            message: "Invalid data types"
-        });
-
-        return false;
+        return res.end(
+            JSON.stringify({
+                message: "Hello world!"
+            })
+        );
     }
 
-    // Underflow
-    if (num1 < -1000000 || num2 < -1000000) {
-        res.json({
-            status: "error",
-            message: "Underflow"
-        });
+    // Only handle POST requests from here
+    if (req.method !== "POST") {
+        res.statusCode = 404;
 
-        return false;
+        return res.end(
+            JSON.stringify({
+                status: "error",
+                message: "Not Found"
+            })
+        );
     }
 
-    // Overflow
-    if (num1 > 1000000 || num2 > 1000000) {
-        res.json({
-            status: "error",
-            message: "Overflow"
-        });
+    // Read request body
+    let body = "";
 
-        return false;
-    }
-
-    return true;
-}
-
-// Addition
-app.post("/add", (req, res) => {
-    if (!validateNumbers(req, res)) return;
-
-    const { num1, num2 } = req.body;
-    const sum = num1 + num2;
-
-    if (sum < -1000000) {
-        return res.json({
-            status: "error",
-            message: "Underflow"
-        });
-    }
-
-    if (sum > 1000000) {
-        return res.json({
-            status: "error",
-            message: "Overflow"
-        });
-    }
-
-    res.json({
-        status: "success",
-        message: "the sum of given two numbers",
-        sum: sum
+    req.on("data", (chunk) => {
+        body += chunk;
     });
-});
 
-// Subtraction
-app.post("/sub", (req, res) => {
-    if (!validateNumbers(req, res)) return;
+    req.on("end", () => {
+        let data;
 
-    const { num1, num2 } = req.body;
-    const difference = num1 - num2;
+        try {
+            data = JSON.parse(body);
+        } catch (error) {
+            res.statusCode = 400;
 
-    if (difference < -1000000) {
-        return res.json({
-            status: "error",
-            message: "Underflow"
-        });
-    }
+            return res.end(
+                JSON.stringify({
+                    status: "error",
+                    message: "Invalid data types"
+                })
+            );
+        }
 
-    if (difference > 1000000) {
-        return res.json({
-            status: "error",
-            message: "Overflow"
-        });
-    }
+        const { num1, num2 } = data;
 
-    res.json({
-        status: "success",
-        message: "the difference of given two numbers",
-        difference: difference
-    });
-});
+        // Validate data types
+        if (
+            typeof num1 !== "number" ||
+            typeof num2 !== "number" ||
+            Number.isNaN(num1) ||
+            Number.isNaN(num2)
+        ) {
+            res.statusCode = 400;
 
-// Multiplication
-app.post("/multiply", (req, res) => {
-    if (!validateNumbers(req, res)) return;
+            return res.end(
+                JSON.stringify({
+                    status: "error",
+                    message: "Invalid data types"
+                })
+            );
+        }
 
-    const { num1, num2 } = req.body;
-    const result = num1 * num2;
+        // Input underflow
+        if (num1 < -LIMIT || num2 < -LIMIT) {
+            res.statusCode = 400;
 
-    if (result < -1000000) {
-        return res.json({
-            status: "error",
-            message: "Underflow"
-        });
-    }
+            return res.end(
+                JSON.stringify({
+                    status: "error",
+                    message: "Underflow"
+                })
+            );
+        }
 
-    if (result > 1000000) {
-        return res.json({
-            status: "error",
-            message: "Overflow"
-        });
-    }
+        // Input overflow
+        if (num1 > LIMIT || num2 > LIMIT) {
+            res.statusCode = 400;
 
-    res.json({
-        status: "success",
-        message: "The product of given numbers",
-        result: result
-    });
-});
+            return res.end(
+                JSON.stringify({
+                    status: "error",
+                    message: "Overflow"
+                })
+            );
+        }
 
-// Division
-app.post("/divide", (req, res) => {
-    if (!validateNumbers(req, res)) return;
+        // ADD
+        if (req.url === "/add") {
+            const sum = num1 + num2;
 
-    const { num1, num2 } = req.body;
+            if (sum < -LIMIT) {
+                res.statusCode = 400;
 
-    // Division by zero
-    if (num2 === 0) {
-        return res.json({
-            status: "error",
-            message: "Cannot divide by zero"
-        });
-    }
+                return res.end(
+                    JSON.stringify({
+                        status: "error",
+                        message: "Underflow"
+                    })
+                );
+            }
 
-    const result = num1 / num2;
+            if (sum > LIMIT) {
+                res.statusCode = 400;
 
-    if (result < -1000000) {
-        return res.json({
-            status: "error",
-            message: "Underflow"
-        });
-    }
+                return res.end(
+                    JSON.stringify({
+                        status: "error",
+                        message: "Overflow"
+                    })
+                );
+            }
 
-    if (result > 1000000) {
-        return res.json({
-            status: "error",
-            message: "Overflow"
-        });
-    }
+            res.statusCode = 200;
 
-    res.json({
-        status: "success",
-        message: "The division of given numbers",
-        result: result
+            return res.end(
+                JSON.stringify({
+                    status: "success",
+                    message: "the sum of given two numbers",
+                    sum: sum
+                })
+            );
+        }
+
+        // SUB
+        if (req.url === "/sub") {
+            const difference = num1 - num2;
+
+            if (difference < -LIMIT) {
+                res.statusCode = 400;
+
+                return res.end(
+                    JSON.stringify({
+                        status: "error",
+                        message: "Underflow"
+                    })
+                );
+            }
+
+            if (difference > LIMIT) {
+                res.statusCode = 400;
+
+                return res.end(
+                    JSON.stringify({
+                        status: "error",
+                        message: "Overflow"
+                    })
+                );
+            }
+
+            res.statusCode = 200;
+
+            return res.end(
+                JSON.stringify({
+                    status: "success",
+                    message: "the difference of given two numbers",
+                    difference: difference
+                })
+            );
+        }
+
+        // MULTIPLY
+        if (req.url === "/multiply") {
+            const result = num1 * num2;
+
+            if (result < -LIMIT) {
+                res.statusCode = 400;
+
+                return res.end(
+                    JSON.stringify({
+                        status: "error",
+                        message: "Underflow"
+                    })
+                );
+            }
+
+            if (result > LIMIT) {
+                res.statusCode = 400;
+
+                return res.end(
+                    JSON.stringify({
+                        status: "error",
+                        message: "Overflow"
+                    })
+                );
+            }
+
+            res.statusCode = 200;
+
+            return res.end(
+                JSON.stringify({
+                    status: "success",
+                    message: "The product of given numbers",
+                    result: result
+                })
+            );
+        }
+
+        // DIVIDE
+        if (req.url === "/divide") {
+            if (num2 === 0) {
+                res.statusCode = 400;
+
+                return res.end(
+                    JSON.stringify({
+                        status: "error",
+                        message: "Cannot divide by zero"
+                    })
+                );
+            }
+
+            const result = num1 / num2;
+
+            if (result < -LIMIT) {
+                res.statusCode = 400;
+
+                return res.end(
+                    JSON.stringify({
+                        status: "error",
+                        message: "Underflow"
+                    })
+                );
+            }
+
+            if (result > LIMIT) {
+                res.statusCode = 400;
+
+                return res.end(
+                    JSON.stringify({
+                        status: "error",
+                        message: "Overflow"
+                    })
+                );
+            }
+
+            res.statusCode = 200;
+
+            return res.end(
+                JSON.stringify({
+                    status: "success",
+                    message: "The division of given numbers",
+                    result: result
+                })
+            );
+        }
+
+        // Unknown endpoint
+        res.statusCode = 404;
+
+        return res.end(
+            JSON.stringify({
+                status: "error",
+                message: "Not Found"
+            })
+        );
     });
 });
 
