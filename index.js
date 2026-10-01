@@ -1,14 +1,12 @@
+
 const express = require("express");
-const path = require("path");
 
 const app = express();
 
-app.use(express.static(__dirname));
 app.use(express.json());
 
 app.get("/", (req, res) => {
-    // res.sendFile(path.join(__dirname, "main.html"));
-    res.send("Hello World")
+    res.send("Hello World");
 });
 
 // Check whether numbers are valid
@@ -111,34 +109,9 @@ app.post("/sub", (req, res) => {
 
 // Multiplication
 app.post("/multiply", (req, res) => {
+    if (!validateNumbers(req, res)) return;
+
     const { num1, num2 } = req.body;
-
-    if (
-        typeof num1 !== "number" ||
-        typeof num2 !== "number" ||
-        Number.isNaN(num1) ||
-        Number.isNaN(num2)
-    ) {
-        return res.json({
-            status: "error",
-            message: "Invalid data types"
-        });
-    }
-
-    if (num1 < -1000000 || num2 < -1000000) {
-        return res.json({
-            status: "error",
-            message: "Underflow"
-        });
-    }
-
-    if (num1 > 1000000 || num2 > 1000000) {
-        return res.json({
-            status: "error",
-            message: "Overflow"
-        });
-    }
-
     const result = num1 * num2;
 
     if (result < -1000000) {
@@ -155,7 +128,7 @@ app.post("/multiply", (req, res) => {
         });
     }
 
-    return res.json({
+    res.json({
         status: "success",
         message: "The product of given numbers",
         result: result
